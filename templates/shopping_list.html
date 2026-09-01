@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Shopping List - Meal Planner{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+        <h2>Shopping List for Week of {{ week_start.strftime('%B %d, %Y') }}</h2>
+        <div style="display: flex; gap: 10px;">
+            <a href="{{ url_for('meal_plan', week=week_start.strftime('%Y-%m-%d')) }}" class="btn">Back to Meal Plan</a>
+            <a href="{{ url_for('index', week=week_start.strftime('%Y-%m-%d')) }}" class="btn">Week View</a>
+        </div>
+    </div>
+
+    {% if items %}
+    <table>
+        <thead>
+            <tr>
+                <th>Ingredient</th>
+                <th>Total Needed</th>
+                <th>On Hand</th>
+                <th>To Buy</th>
+                <th>Unit</th>
+                <th>Price/Unit</th>
+                <th>Est. Cost</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr {% if item.to_buy == 0 %}style="background: #d4edda; color: #155724;"{% endif %}>
+                <td>{{ item.ingredient.name }}</td>
+                <td>{{ "%.2f"|format(item.total_needed) }}</td>
+                <td>{{ "%.2f"|format(item.on_hand) }}</td>
+                <td><strong>{{ "%.2f"|format(item.to_buy) }}</strong></td>
+                <td>{{ item.unit }}</td>
+                <td>${{ "%.2f"|format(item.ingredient.price_per_unit) }}/{{ item.ingredient.price_unit }}</td>
+                <td>${{ "%.2f"|format(item.estimated_cost) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr style="font-weight: bold; background: #f8f9fa;">
+                <td colspan="6" style="text-align: right;">Total Estimated Cost:</td>
+                <td class="total-cost">${{ "%.2f"|format(total_cost) }}</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
+        <h4>Printable List</h4>
+        <button onclick="window.print()" class="btn">Print Shopping List</button>
+        <p style="margin-top: 10px; font-size: 0.875rem; color: #666;">
+            Green rows = already have enough in pantry. Update quantities in Pantry after shopping.
+        </p>
+    </div>
+    {% else %}
+    <p>No meals planned for this week. <a href="{{ url_for('meal_plan', week=week_start.strftime('%Y-%m-%d')) }}">Plan some meals</a> to generate a shopping list.</p>
+    {% endif %}
+</div>
+{% endblock %}

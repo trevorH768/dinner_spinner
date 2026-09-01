@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if ingredient %}Edit{% else %}New{% endif %} Ingredient - Meal Planner{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 700px;">
+    <h2>{% if ingredient %}Edit{% else %}New{% endif %} Ingredient</h2>
+
+    <form method="POST">
+        <div class="form-group">
+            <label>Name</label>
+            <input type="text" name="name" value="{{ ingredient.name if ingredient else '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label>Category</label>
+            <select name="category" required>
+                <option value="Dairy" {% if ingredient and ingredient.category == 'Dairy' %}selected{% endif %}>Dairy</option>
+                <option value="Meat" {% if ingredient and ingredient.category == 'Meat' %}selected{% endif %}>Meat</option>
+                <option value="Produce" {% if ingredient and ingredient.category == 'Produce' %}selected{% endif %}>Produce</option>
+                <option value="Dry Goods" {% if ingredient and ingredient.category == 'Dry Goods' %}selected{% endif %}>Dry Goods</option>
+                <option value="Canned Goods" {% if ingredient and ingredient.category == 'Canned Goods' %}selected{% endif %}>Canned Goods</option>
+                <option value="Other" {% if ingredient and ingredient.category == 'Other' %}selected{% endif %}>Other</option>
+            </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Recipe Unit</label>
+                <input type="text" name="unit" value="{{ ingredient.unit if ingredient else '' }}" placeholder="e.g., g, ml, cup, piece, tbsp, tsp" required>
+                <small style="color: #666;">Unit used in recipes</small>
+            </div>
+        </div>
+
+        <h3 style="margin: 20px 0 10px; color: #2c3e50;">Package Info (what you buy at the store)</h3>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Package Price</label>
+                <input type="number" name="package_price" step="0.01" value="{{ ingredient.package_price if ingredient else '' }}" placeholder="e.g., 5.99" required>
+            </div>
+            <div class="form-group">
+                <label>Package Quantity</label>
+                <input type="number" name="package_quantity" step="0.01" value="{{ ingredient.package_quantity if ingredient else '' }}" placeholder="e.g., 2" required>
+            </div>
+            <div class="form-group">
+                <label>Package Unit</label>
+                <select name="package_unit" required>
+                    <option value="g" {% if ingredient and ingredient.package_unit == 'g' %}selected{% endif %}>Grams (g)</option>
+                    <option value="kg" {% if ingredient and ingredient.package_unit == 'kg' %}selected{% endif %}>Kilograms (kg)</option>
+                    <option value="lb" {% if ingredient and ingredient.package_unit == 'lb' %}selected{% endif %}>Pounds (lb)</option>
+                    <option value="oz" {% if ingredient and ingredient.package_unit == 'oz' %}selected{% endif %}>Ounces (oz)</option>
+                    <option value="ml" {% if ingredient and ingredient.package_unit == 'ml' %}selected{% endif %}>Milliliters (ml)</option>
+                    <option value="l" {% if ingredient and ingredient.package_unit == 'l' %}selected{% endif %}>Liters (L)</option>
+                    <option value="cup" {% if ingredient and ingredient.package_unit == 'cup' %}selected{% endif %}>Cups (US)</option>
+                    <option value="each" {% if ingredient and ingredient.package_unit == 'each' %}selected{% endif %}>Each / Count</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Quantity on Hand</label>
+                <input type="number" name="quantity_on_hand" step="0.01" value="{{ ingredient.quantity_on_hand if ingredient else 0 }}" placeholder="e.g., 500" min="0">
+                <small style="color: #666;">In recipe units (e.g., grams if recipe unit is g)</small>
+            </div>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 20px 0;">
+            <h4>Auto-calculated Costs:</h4>
+            {% if ingredient %}
+                <p><strong>Cost per base unit:</strong> ${{ "%.4f"|format(ingredient.cost_per_base_unit()) }} per 
+                    {% if ingredient.package_unit in ['g', 'kg', 'lb', 'oz'] %}gram
+                    {% elif ingredient.package_unit in ['ml', 'l', 'cup'] %}ml
+                    {% else %}piece{% endif %}
+                </p>
+                <p><strong>Cost per recipe unit ({{ ingredient.unit }}):</strong> ${{ "%.4f"|format(ingredient.cost_per_recipe_unit(ingredient.unit)) }}</p>
+            {% else %}
+                <p style="color: #666;">Fill in package info above to see calculated costs</p>
+            {% endif %}
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button type="submit" class="btn btn-success">Save Ingredient</button>
+            <a href="{{ url_for('ingredients') }}" class="btn" style="margin-left: 10px;">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

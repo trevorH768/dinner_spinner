@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}Meal Plan - Meal Planner{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Meal Plan for Week of {{ week_start.strftime('%B %d, %Y') }}</h2>
+
+    <form method="POST" style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+        <h3>Add/Edit Meal</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Day</label>
+                <select name="day" required>
+                    {% for day in days %}
+                    <option value="{{ day }}">{{ day }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Meal</label>
+                <select name="meal_type" required>
+                    {% for mt in meal_types %}
+                    <option value="{{ mt }}">{{ mt.capitalize() }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Recipe</label>
+                <select name="recipe_id" required>
+                    <option value="">Select recipe...</option>
+                    {% for recipe in recipes %}
+                    <option value="{{ recipe.id }}">{{ recipe.name }} (${{ "%.2f"|format(recipe.cost_per_serving()) }}/serving)</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Servings</label>
+                <input type="number" name="servings" value="1" min="1" required>
+            </div>
+        </div>
+        <button type="submit" class="btn">Save to Plan</button>
+    </form>
+
+    <div class="card" style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+        <h3>Copy from Another Week</h3>
+        <form method="POST" style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+            <input type="hidden" name="action" value="copy_week">
+            <label for="source_week" style="margin: 0; font-weight: 500;">Copy from week of:</label>
+            <select name="source_week" id="source_week" required style="width: auto; padding: 8px 12px; flex: 1; min-width: 200px;">
+                <option value="">Select a week...</option>
+                {% for w in all_weeks %}
+                {% if w != week_start %}
+                <option value="{{ w.strftime('%Y-%m-%d') }}">{{ w.strftime('%b %d, %Y') }}</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn" style="white-space: nowrap;">Copy Meal Plan</button>
+        </form>
+        <p style="margin-top: 10px; font-size: 0.875rem; color: #666;">Creates missing meals in this week from the selected week. Won't overwrite existing entries.</p>
+    </div>
+
+    <div class="schedule-grid">
+        <div class="schedule-header">Meal / Day</div>
+        {% for day in days %}
+        <div class="schedule-header">{{ day[:3] }}</div>
+        {% endfor %}
+
+        {% for meal_type in meal_types %}
+        <div class="meal-label">{{ meal_type.capitalize() }}</div>
+        {% for day in days %}
+        <div class="schedule-cell {% if not schedule[day][meal_type] %}empty{% endif %}">
+            {% if schedule[day][meal_type] %}
+            <div class="recipe-card">
+                <div class="recipe-name">{{ schedule[day][meal_type].recipe.name }}</div>
+                <div class="recipe-servings">{{ schedule[day][meal_type].servings }} serving(s)</div>
+                <div class="recipe-servings">${{ "%.2f"|format(schedule[day][meal_type].recipe.cost_per_serving() * schedule[day][meal_type].servings) }} total</div>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card">
+    <h3>Weekly Cost Estimate</h3>
+    <p class="total-cost">${{ "%.2f"|format(total_cost) }}</p>
+    <p>{{ total_meals }} meal(s) planned</p>
+    <a href="{{ url_for('shopping_list', week=week_start.strftime('%Y-%m-%d')) }}" class="btn btn-success">Generate Shopping List</a>
+</div>
+{% endblock %}

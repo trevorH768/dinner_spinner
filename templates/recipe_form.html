@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if recipe %}Edit{% else %}New{% endif %} Recipe - Meal Planner{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>{% if recipe %}Edit{% else %}New{% endif %} Recipe</h2>
+
+    <form method="POST">
+        <div class="form-group">
+            <label>Recipe Name</label>
+            <input type="text" name="name" value="{{ recipe.name if recipe else '' }}" required>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Servings</label>
+                <input type="number" name="servings" value="{{ recipe.servings if recipe else 1 }}" min="1" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Instructions</label>
+            <textarea name="instructions">{{ recipe.instructions if recipe else '' }}</textarea>
+        </div>
+
+        <h3>Ingredients</h3>
+        <div id="ingredient-container">
+            {% if recipe %}
+                {% for ri in recipe.recipe_ingredients %}
+                <div class="ingredient-row">
+                    <select name="ingredient_id[]" required>
+                        <option value="">Select ingredient...</option>
+                        {% for ing in ingredients %}
+                        <option value="{{ ing.id }}" {% if ing.id == ri.ingredient_id %}selected{% endif %}>{{ ing.name }} ({{ ing.unit }}) - ${{ "%.4f"|format(ing.cost_per_base_unit()) }}/
+                            {% if ing.package_unit in ['g', 'kg', 'lb', 'oz'] %}g
+                            {% elif ing.package_unit in ['ml', 'l', 'cup'] %}ml
+                            {% else %}piece{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <input type="number" name="quantity[]" step="0.01" value="{{ ri.quantity }}" placeholder="Quantity" required>
+                    <input type="text" name="unit[]" value="{{ ri.unit }}" placeholder="Unit" required>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">Remove</button>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="ingredient-row">
+                    <select name="ingredient_id[]" required>
+                        <option value="">Select ingredient...</option>
+                        {% for ing in ingredients %}
+                        <option value="{{ ing.id }}">{{ ing.name }} ({{ ing.unit }}) - ${{ "%.4f"|format(ing.cost_per_base_unit()) }}/
+                            {% if ing.package_unit in ['g', 'kg', 'lb', 'oz'] %}g
+                            {% elif ing.package_unit in ['ml', 'l', 'cup'] %}ml
+                            {% else %}piece{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <input type="number" name="quantity[]" step="0.01" placeholder="Quantity" required>
+                    <input type="text" name="unit[]" placeholder="Unit" required>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">Remove</button>
+                </div>
+            {% endif %}
+        </div>
+
+        <button type="button" class="btn" onclick="addIngredientRow('ingredient-container')">+ Add Ingredient</button>
+
+        <div style="margin-top: 20px;">
+            <button type="submit" class="btn btn-success">Save Recipe</button>
+            <a href="{{ url_for('recipes') }}" class="btn" style="margin-left: 10px;">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

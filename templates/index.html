@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Week View - Meal Planner{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>Week of {{ week_start.strftime('%B %d, %Y') }}</h2>
+        <a href="{{ url_for('meal_plan', week=week_start.strftime('%Y-%m-%d')) }}" class="btn">Edit Meal Plan</a>
+    </div>
+
+    <div class="schedule-grid">
+        <div class="schedule-header">Meal / Day</div>
+        {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+        <div class="schedule-header">{{ day[:3] }}</div>
+        {% endfor %}
+
+        {% for meal_type in ['breakfast', 'lunch', 'dinner', 'snack'] %}
+        <div class="meal-label">{{ meal_type.capitalize() }}</div>
+        {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+        <div class="schedule-cell {% if not schedule[day][meal_type] %}empty{% endif %}">
+            {% if schedule[day][meal_type] %}
+            <div class="recipe-card">
+                <div class="recipe-name">{{ schedule[day][meal_type].recipe.name }}</div>
+                <div class="recipe-servings">{{ schedule[day][meal_type].servings }} serving(s)</div>
+                <div class="recipe-servings">${{ "%.2f"|format(schedule[day][meal_type].recipe.cost_per_serving()) }}/serving</div>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card">
+    <h3>Weekly Summary</h3>
+    <p>Total planned meals: <strong>{{ total_meals }}</strong></p>
+    <p>Estimated weekly food cost: <strong class="total-cost">${{ "%.2f"|format(total_cost) }}</strong></p>
+    <a href="{{ url_for('shopping_list', week=week_start.strftime('%Y-%m-%d')) }}" class="btn btn-success">View Shopping List</a>
+</div>
+{% endblock %}

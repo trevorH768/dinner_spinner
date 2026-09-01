@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Pantry - Meal Planner{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Pantry</h2>
+    <a href="{{ url_for('new_ingredient') }}" class="btn">Add Ingredient</a>
+</div>
+
+{% if has_ingredients %}
+    {% for cat in categories %}
+        {% if grouped[cat] %}
+        <div class="card" style="margin-bottom: 20px;">
+            <h3 style="margin-bottom: 15px; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">{{ cat }}</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Recipe Unit</th>
+                        <th>Package</th>
+                        <th>Cost / {{ cat in ['Dairy', 'Meat', 'Produce', 'Dry Goods', 'Canned Goods'] and 'g' or 'ml' }}</th>
+                        <th>Cost / Recipe Unit</th>
+                        <th>On Hand</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ing in grouped[cat] %}
+                    <tr>
+                        <td>{{ ing.name }}</td>
+                        <td>{{ ing.unit }}</td>
+                        <td>${{ "%.2f"|format(ing.package_price) }} / {{ ing.package_quantity }}{{ ing.package_unit }}</td>
+                        <td>${{ "%.4f"|format(ing.cost_per_base_unit()) }} per 
+                            {% if ing.package_unit in ['g', 'kg', 'lb', 'oz'] %}g
+                            {% elif ing.package_unit in ['ml', 'l', 'cup'] %}ml
+                            {% else %}piece{% endif %}
+                        </td>
+                        <td>${{ "%.4f"|format(ing.cost_per_recipe_unit(ing.unit)) }} per {{ ing.unit }}</td>
+                        <td>{{ "%.2f"|format(ing.quantity_on_hand or 0) }} {{ ing.unit }}</td>
+                        <td>
+                            <a href="{{ url_for('edit_ingredient', id=ing.id) }}" class="btn btn-sm">Edit</a>
+                            <form action="{{ url_for('delete_ingredient', id=ing.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Delete this ingredient?')">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    {% endfor %}
+{% else %}
+<div class="card">
+    <p>No ingredients yet. <a href="{{ url_for('new_ingredient') }}">Add your first ingredient</a>!</p>
+</div>
+{% endif %}
+{% endblock %}
