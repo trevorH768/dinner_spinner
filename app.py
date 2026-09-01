@@ -386,6 +386,19 @@ def meal_plan():
     week_start = parse_week_start(week_str)
 
     if request.method == 'POST':
+        # Handle delete meal action
+        if request.form.get('action') == 'delete_meal':
+            day = request.form['day']
+            meal_type = request.form['meal_type']
+            mp = MealPlan.query.filter_by(
+                week_start=week_start, day=day, meal_type=meal_type
+            ).first()
+            if mp:
+                db.session.delete(mp)
+                db.session.commit()
+                flash('Meal removed!')
+            return redirect(url_for('meal_plan', week=week_start.strftime('%Y-%m-%d')))
+
         # Handle copy week action
         if request.form.get('action') == 'copy_week':
             source_week_str = request.form.get('source_week')

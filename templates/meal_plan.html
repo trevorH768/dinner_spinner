@@ -75,7 +75,13 @@
         {% for day in days %}
         <div class="schedule-cell {% if not schedule[day][meal_type] %}empty{% endif %}">
             {% if schedule[day][meal_type] %}
-            <div class="recipe-card">
+            <div class="recipe-card" style="position: relative;">
+                <form method="POST" action="{{ url_for('meal_plan', week=week_start.strftime('%Y-%m-%d')) }}" style="display: inline;" onsubmit="return confirm('Remove this meal?')">
+                    <input type="hidden" name="action" value="delete_meal">
+                    <input type="hidden" name="day" value="{{ day }}">
+                    <input type="hidden" name="meal_type" value="{{ meal_type }}">
+                    <button type="submit" style="position: absolute; top: 4px; right: 4px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 14px; cursor: pointer; line-height: 1; padding: 0;">×</button>
+                </form>
                 <div class="recipe-name">{{ schedule[day][meal_type].recipe.name }}</div>
                 <div class="recipe-servings">{{ schedule[day][meal_type].servings }} serving(s)</div>
                 <div class="recipe-servings">${{ "%.2f"|format(schedule[day][meal_type].recipe.cost_per_serving() * schedule[day][meal_type].servings) }} total</div>
