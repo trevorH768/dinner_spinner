@@ -33,9 +33,9 @@
 <div class="card" style="padding: 0; overflow: hidden;">
     <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
         <thead>
-            <tr style="background: #2c3e50; color: white;">
+            <tr style="background: #3498db; color: white;">
                 {% for day in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
-                <th style="padding: 12px; text-align: center; border-right: 1px solid rgba(255,255,255,0.2); {% if day in ['Sat', 'Sun'] %}background: rgba(255,255,255,0.05);{% endif %}">
+                <th style="padding: 12px; text-align: center; border-right: 1px solid rgba(255,255,255,0.2);">
                     {{ day }}
                 </th>
                 {% endfor %}
@@ -47,8 +47,8 @@
                 {% for day_name in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
                 {% set day_date = week.day_dates[loop.index0] %}
                 {% if day_date.month == current_month.month %}
-                <td class="day-cell {% if day_name in ['Saturday', 'Sunday'] %}weekend{% endif %}" 
-                    style="width: 14.28%; min-height: 180px; padding: 8px; border-right: 1px solid #eee; border-bottom: 1px solid #eee; vertical-align: top; position: relative; {% if day_name in ['Saturday', 'Sunday'] %}background: #fafafa;{% endif %}">
+                <td class="day-cell" 
+                    style="width: 14.28%; min-height: 180px; padding: 8px; border-right: 1px solid #eee; border-bottom: 1px solid #eee; vertical-align: top; position: relative;">
                     
                     <!-- Day number -->
                     <div class="day-number" style="font-weight: 600; font-size: 1.1rem; margin-bottom: 6px; color: #3498db; {% if day_date == today %}background: #3498db; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;{% endif %}">
@@ -92,8 +92,8 @@
                     </div>
                 </td>
                 {% else %}
-                <td class="day-cell other-month {% if day_name in ['Saturday', 'Sunday'] %}weekend{% endif %}" 
-                    style="width: 14.28%; min-height: 180px; padding: 8px; border-right: 1px solid #eee; border-bottom: 1px solid #eee; vertical-align: top; position: relative; opacity: 0.3; {% if day_name in ['Saturday', 'Sunday'] %}background: #fafafa;{% endif %}">
+                <td class="day-cell other-month" 
+                    style="width: 14.28%; min-height: 180px; padding: 8px; border-right: 1px solid #eee; border-bottom: 1px solid #eee; vertical-align: top; position: relative; opacity: 0.3;">
                     
                     <!-- Day number (muted for other months) -->
                     <div class="day-number" style="font-weight: 600; font-size: 1.1rem; margin-bottom: 6px; color: #ccc;">
@@ -170,12 +170,6 @@
 }
 .day-cell:hover {
     background: #f5fbff !important;
-}
-.day-cell.weekend {
-    background: #fafafa;
-}
-.day-cell.weekend:hover {
-    background: #f0f7ff !important;
 }
 .day-cell.other-month {
     background: #f9f9f9;
