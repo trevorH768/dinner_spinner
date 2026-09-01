@@ -243,7 +243,8 @@ def month_view():
     # Generate 6 weeks (42 days) of data
     weeks = []
     current_week_start = month_start
-    for _ in range(6):
+    today = date.today()
+    for week_idx in range(6):
         week_end = current_week_start + timedelta(days=6)
         meal_plans = MealPlan.query.filter_by(week_start=current_week_start).all()
         
@@ -254,10 +255,17 @@ def month_view():
         for mp in meal_plans:
             schedule[mp.day][mp.meal_type] = mp
         
+        # Pre-compute day dates for this week
+        day_dates = []
+        for day_idx in range(7):
+            day_date = current_week_start + timedelta(days=day_idx)
+            day_dates.append(day_date)
+        
         weeks.append({
             'week_start': current_week_start,
             'week_end': week_end,
             'schedule': schedule,
+            'day_dates': day_dates,
             'is_current_month': current_week_start.month == first_day.month,
             'is_current_week': current_week_start == get_week_start(),
         })
@@ -290,7 +298,8 @@ def month_view():
     recipes = Recipe.query.all()
     return render_template('month.html', weeks=weeks, 
                            current_month=first_day, prev_month=prev_month, next_month=next_month,
-                           recipes=recipes, total_meals=total_meals, total_cost=total_cost)
+                           recipes=recipes, total_meals=total_meals, total_cost=total_cost,
+                           today=today)
 
 
 @app.route('/recipes')

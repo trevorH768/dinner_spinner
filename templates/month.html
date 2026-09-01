@@ -12,19 +12,13 @@
             <form method="GET" action="{{ url_for('month_view') }}" style="display: flex; align-items: center; gap: 8px;">
                 <label for="month-select" style="margin: 0; font-weight: 500;">Jump to:</label>
                 <select id="month-select" name="month" onchange="this.form.submit()" style="width: auto; padding: 8px 12px;">
-                    {% for m in range(12, 0, -1) %}
-                    {% set d = current_month.replace(month=m) %}
+                    {% for y in range(current_month.year - 2, current_month.year + 3) %}
+                    {% for m in range(1, 13) %}
+                    {% set d = current_month.replace(year=y, month=m, day=1) %}
                     <option value="{{ d.strftime('%Y-%m') }}" {% if d.month == current_month.month and d.year == current_month.year %}selected{% endif %}>
                         {{ d.strftime('%B %Y') }}
                     </option>
                     {% endfor %}
-                    {% for y in range(current_month.year - 2, current_month.year + 3) %}
-                    {% if y != current_month.year %}
-                    {% for m in range(1, 13) %}
-                    {% set d = current_month.replace(year=y, month=m, day=1) %}
-                    <option value="{{ d.strftime('%Y-%m') }}">{{ d.strftime('%B %Y') }}</option>
-                    {% endfor %}
-                    {% endif %}
                     {% endfor %}
                 </select>
             </form>
@@ -35,72 +29,71 @@
     </div>
 </div>
 
-<!-- Month Grid: 6 weeks x 7 days x 4 meal types -->
-<div class="card" style="padding: 0; overflow-x: auto;">
-    <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; min-width: 1200px;">
-            <thead>
-                <tr style="background: #2c3e50; color: white;">
-                    <th style="width: 100px; position: sticky; left: 0; z-index: 10;">Meal / Week</th>
-                    {% for w in weeks %}
-                    <th colspan="7" style="text-align: center; padding: 12px; border-right: 1px solid rgba(255,255,255,0.2);">
-                        <div style="font-weight: 600;">{{ w.week_start.strftime('%b %d') }} - {{ w.week_end.strftime('%b %d, %Y') }}</div>
-                        <div style="font-size: 0.75rem; opacity: 0.8;">
-                            {% if w.is_current_week %}<span style="color: #27ae60;">● This week</span>{% endif %}
-                        </div>
-                    </th>
-                    {% endfor %}
-                </tr>
-                <tr style="background: #34495e; color: white;">
-                    <th style="width: 100px; position: sticky; left: 0; z-index: 10;"></th>
-                    {% for w in weeks %}
-                    {% for day in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
-                    <th style="padding: 8px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); font-size: 0.75rem; {% if day in ['Sat', 'Sun'] %}background: rgba(255,255,255,0.05);{% endif %}">
-                        {{ day }}
-                    </th>
-                    {% endfor %}
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for meal_type in ['breakfast', 'lunch', 'dinner', 'snack'] %}
-                <tr class="meal-row" data-meal-type="{{ meal_type }}">
-                    <td class="meal-label" style="width: 100px; position: sticky; left: 0; background: #34495e; color: white; padding: 10px; font-weight: 600; z-index: 5;">{{ meal_type.capitalize() }}</td>
-                    {% for w in weeks %}
-                    {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
-                    <td class="meal-cell {% if day in ['Saturday', 'Sunday'] %}weekend{% endif %} {% if not w.schedule[day][meal_type] %}empty{% endif %}" 
-                        data-week-start="{{ w.week_start.strftime('%Y-%m-%d') }}"
-                        data-day="{{ day }}"
-                        data-meal-type="{{ meal_type }}"
-                        style="position: relative; min-height: 70px; padding: 4px; border-right: 1px solid #eee; border-bottom: 1px solid #eee; vertical-align: top; {% if day in ['Saturday', 'Sunday'] %}background: #fdfdfd;{% endif %} {% if not w.is_current_month %}opacity: 0.5;{% endif %}">
-                        
-                        {% if w.schedule[day][meal_type] %}
-                        <div class="recipe-card" data-meal-id="{{ w.schedule[day][meal_type].id }}" style="cursor: pointer;">
-                            <div class="recipe-name">{{ w.schedule[day][meal_type].recipe.name }}</div>
-                            <div class="recipe-servings">
-                                <span class="servings-display">{{ w.schedule[day][meal_type].servings }}</span>
-                                <button class="serving-btn" data-action="decrease" title="Decrease servings">−</button>
-                                <button class="serving-btn" data-action="increase" title="Increase servings">+</button>
-                            </div>
-                            <div class="recipe-cost">${{ "%.2f"|format(w.schedule[day][meal_type].recipe.cost_per_serving() * w.schedule[day][meal_type].servings) }}</div>
-                            <button class="delete-btn" data-meal-id="{{ w.schedule[day][meal_type].id }}" title="Delete meal">×</button>
-                        </div>
-                        {% else %}
-                        <div class="empty-cell-indicator" style="height: 100%; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 1.5rem;">+</div>
-                        {% endif %}
-                    </td>
-                    {% endfor %}
-                    {% endfor %}
-                </tr>
+<!-- Calendar Grid: 6 weeks x 7 days -->
+<div class="card" style="padding: 0; overflow: hidden;">
+    <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+        <thead>
+            <tr style="background: #2c3e50; color: white;">
+                {% for day in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+                <th style="padding: 12px; text-align: center; border-right: 1px solid rgba(255,255,255,0.2); {% if day in ['Sat', 'Sun'] %}background: rgba(255,255,255,0.05);{% endif %}">
+                    {{ day }}
+                </th>
                 {% endfor %}
-            </tbody>
-        </table>
-    </div>
+            </tr>
+        </thead>
+        <tbody>
+            {% for week in weeks %}
+            <tr>
+                {% for day_name in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                <td class="day-cell {% if day_name in ['Saturday', 'Sunday'] %}weekend{% endif %} {% if not week.is_current_month %}other-month{% endif %}" 
+                    style="width: 14.28%; min-height: 180px; padding: 8px; border-right: 1px solid #eee; border-bottom: 1px solid #eee; vertical-align: top; position: relative; {% if day_name in ['Saturday', 'Sunday'] %}background: #fafafa;{% endif %} {% if not week.is_current_month %}opacity: 0.6;{% endif %}">
+                    
+                    <!-- Day number -->
+                    {% set day_date = week.day_dates[loop.index0] %}
+                    <div class="day-number" style="font-weight: 600; font-size: 1.1rem; margin-bottom: 6px; {% if day_date == today %}background: #3498db; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;{% endif %}">
+                        {{ day_date.day }}
+                    </div>
+                    
+                    <!-- Meal slots -->
+                    <div class="meal-slots" style="display: flex; flex-direction: column; gap: 4px;">
+                        {% for meal_type in ['breakfast', 'lunch', 'dinner'] %}
+                        <div class="meal-slot" 
+                            data-week-start="{{ week.week_start.strftime('%Y-%m-%d') }}"
+                            data-day="{{ day_name }}"
+                            data-meal-type="{{ meal_type }}"
+                            style="background: white; border: 1px solid #e0e0e0; border-radius: 4px; padding: 6px 8px; font-size: 0.75rem; min-height: 40px; position: relative; transition: all 0.2s; cursor: pointer;"
+                            onmouseover="this.style.borderColor='#3498db'; this.style.boxShadow='0 2px 8px rgba(52,152,219,0.2)'"
+                            onmouseout="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
+                            
+                            <div class="meal-type-label" style="font-size: 0.65rem; font-weight: 600; color: #999; text-transform: uppercase; margin-bottom: 2px;">{{ meal_type.capitalize() }}</div>
+                            
+                            {% if week.schedule[day_name][meal_type] %}
+                            <div class="recipe-card" data-meal-id="{{ week.schedule[day_name][meal_type].id }}" style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="recipe-name" style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">{{ week.schedule[day_name][meal_type].recipe.name }}</span>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span class="servings-display" style="background: #3498db; color: white; padding: 1px 6px; border-radius: 3px; font-size: 0.7rem; min-width: 20px; text-align: center;">{{ week.schedule[day_name][meal_type].servings }}</span>
+                                    <button class="serving-btn" data-action="decrease" data-meal-id="{{ week.schedule[day_name][meal_type].id }}" style="background: transparent; color: #3498db; border: 1px solid #3498db; border-radius: 3px; width: 20px; height: 20px; font-size: 12px; cursor: pointer; line-height: 1; padding: 0;">−</button>
+                                    <button class="serving-btn" data-action="increase" data-meal-id="{{ week.schedule[day_name][meal_type].id }}" style="background: transparent; color: #3498db; border: 1px solid #3498db; border-radius: 3px; width: 20px; height: 20px; font-size: 12px; cursor: pointer; line-height: 1; padding: 0;">+</button>
+                                    <button class="delete-btn" data-meal-id="{{ week.schedule[day_name][meal_type].id }}" style="background: transparent; color: #e74c3c; border: 1px solid #e74c3c; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; line-height: 1; padding: 0;">×</button>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="empty-slot" style="display: flex; align-items: center; justify-content: center; height: 100%; color: #ddd; font-size: 1.2rem; transition: color 0.2s;">+</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 
-<!-- Inline Add Meal Form (hidden, shown on click) -->
-<div id="inline-form" class="inline-form" style="display: none; position: absolute; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; min-width: 280px;">
-    <h4 style="margin: 0 0 12px;">Add Meal</h4>
+<!-- Inline Add Meal Form -->
+<div id="inline-form" class="inline-form" style="display: none; position: absolute; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; min-width: 260px;">
+    <h4 style="margin: 0 0 12px;">Add {{ meal_type_placeholder }} Meal</h4>
     <form id="add-meal-form">
         <input type="hidden" name="week_start" id="form-week-start">
         <input type="hidden" name="day" id="form-day">
@@ -145,167 +138,168 @@
 </div>
 
 <style>
-.meal-cell {
+.day-cell {
     transition: background 0.2s;
 }
-.meal-cell:hover {
-    background: #f0f7ff !important;
+.day-cell:hover {
+    background: #f5fbff !important;
 }
-.meal-cell.weekend {
+.day-cell.weekend {
     background: #fafafa;
 }
-.meal-cell.weekend:hover {
+.day-cell.weekend:hover {
     background: #f0f7ff !important;
 }
-.recipe-card {
-    background: #ecf0f1;
-    border-radius: 4px;
-    padding: 8px;
-    margin-bottom: 3px;
-    font-size: 0.8rem;
-    position: relative;
-    min-height: 55px;
-    border: 1px solid transparent;
+.day-cell.other-month {
+    background: #f9f9f9;
 }
-.recipe-card:hover {
+.day-cell.other-month:hover {
+    background: #f0f7ff !important;
+}
+.meal-slot {
+    transition: all 0.15s;
+}
+.meal-slot:hover {
+    border-color: #3498db !important;
+    box-shadow: 0 2px 8px rgba(52,152,219,0.15) !important;
+}
+.meal-slot.has-meal {
     border-color: #3498db;
+    background: #f8fbff;
+}
+.recipe-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
 }
 .recipe-name {
-    font-weight: 600;
-    margin-bottom: 4px;
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-.recipe-servings {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.7rem;
-    color: #7f8c8d;
+    max-width: 100px;
 }
 .servings-display {
-    background: white;
-    padding: 2px 8px;
-    border-radius: 3px;
-    min-width: 24px;
-    text-align: center;
-    border: 1px solid #ddd;
-}
-.serving-btn {
     background: #3498db;
     color: white;
-    border: none;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    min-width: 22px;
+    text-align: center;
+    font-weight: 600;
+}
+.serving-btn {
+    background: transparent;
+    color: #3498db;
+    border: 1px solid #3498db;
     border-radius: 3px;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     font-size: 12px;
     cursor: pointer;
     line-height: 1;
     padding: 0;
+    transition: all 0.15s;
 }
 .serving-btn:hover {
-    background: #2980b9;
-}
-.serving-btn:active {
-    transform: scale(0.95);
-}
-.recipe-cost {
-    font-size: 0.7rem;
-    color: #27ae60;
-    font-weight: 600;
-    margin-top: 4px;
+    background: #3498db;
+    color: white;
 }
 .delete-btn {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    background: #e74c3c;
-    color: white;
-    border: none;
+    background: transparent;
+    color: #e74c3c;
+    border: 1px solid #e74c3c;
     border-radius: 50%;
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     font-size: 12px;
     cursor: pointer;
     line-height: 1;
     padding: 0;
-    opacity: 0;
-    transition: opacity 0.2s;
+    transition: all 0.15s;
 }
-.recipe-card:hover .delete-btn {
-    opacity: 1;
+.delete-btn:hover {
+    background: #e74c3c;
+    color: white;
 }
-.empty-cell-indicator {
+.empty-slot {
     cursor: pointer;
-    transition: color 0.2s;
+    transition: all 0.2s;
+    border: 2px dashed #ddd !important;
+    background: #fafafa;
+    min-height: 36px;
 }
-.empty-cell-indicator:hover {
-    color: #3498db;
+.empty-slot:hover {
+    color: #3498db !important;
+    border-color: #3498db !important;
+    background: #f0f7ff !important;
 }
-.meal-row {
-    /* Meal type row styling */
+.inline-form {
+    animation: slideIn 0.2s ease;
 }
-@media (max-width: 1200px) {
-    .recipe-card { font-size: 0.7rem; padding: 5px; }
-    .serving-btn { width: 18px; height: 18px; font-size: 11px; }
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 1000px) {
+    .day-cell { min-height: 150px; padding: 4px; }
+    .meal-slot { padding: 4px 6px; min-height: 32px; }
+    .recipe-card { font-size: 0.7rem; }
+    .serving-btn, .delete-btn { width: 18px; height: 18px; }
 }
 </style>
 
 <script>
-// Month totals (computed server-side would be better, but this works for now)
-let totalMeals = 0;
-let totalCost = 0.0;
-
-// Initialize totals from existing meals
-document.querySelectorAll('.recipe-card').forEach(card => {
-    totalMeals++;
-    const costText = card.querySelector('.recipe-cost');
-    if (costText) {
-        totalCost += parseFloat(costText.textContent.replace('$', ''));
-    }
-});
-document.getElementById('month-total-meals').textContent = totalMeals;
-document.getElementById('month-total-cost').textContent = '$' + totalCost.toFixed(2);
+// Current date for highlighting today
+const today = new Date();
+today.setHours(0,0,0,0);
 
 // Inline form handling
 const inlineForm = document.getElementById('inline-form');
 const addMealForm = document.getElementById('add-meal-form');
-let currentTargetCell = null;
+let currentTargetSlot = null;
 
-// Click empty cell to add meal
-document.querySelectorAll('.meal-cell.empty .empty-cell-indicator').forEach(indicator => {
-    indicator.style.cursor = 'pointer';
-    indicator.addEventListener('click', (e) => {
+// Click empty slot to add meal
+document.querySelectorAll('.meal-slot .empty-slot').forEach(slot => {
+    slot.style.cursor = 'pointer';
+    slot.addEventListener('click', (e) => {
         e.stopPropagation();
-        const cell = indicator.closest('.meal-cell');
-        showInlineForm(cell);
+        const mealSlot = slot.closest('.meal-slot');
+        showInlineForm(mealSlot);
     });
 });
 
-// Click on empty cell area
-document.querySelectorAll('.meal-cell.empty').forEach(cell => {
-    cell.addEventListener('click', (e) => {
-        if (e.target === cell || e.target.classList.contains('empty-cell-indicator')) {
-            showInlineForm(cell);
-        }
-    });
+// Click on meal slot area
+document.querySelectorAll('.meal-slot').forEach(slot => {
+    if (!slot.querySelector('.recipe-card')) {
+        slot.addEventListener('click', (e) => {
+            if (e.target === slot || e.target.classList.contains('empty-slot') || e.target.classList.contains('meal-type-label')) {
+                showInlineForm(slot);
+            }
+        });
+    }
 });
 
-function showInlineForm(cell) {
-    currentTargetCell = cell;
-    const rect = cell.getBoundingClientRect();
+function showInlineForm(mealSlot) {
+    currentTargetSlot = mealSlot;
+    const rect = mealSlot.getBoundingClientRect();
     const containerRect = document.querySelector('.card').getBoundingClientRect();
     
-    // Position form near the cell
+    // Position form near the slot
     inlineForm.style.left = (rect.left - containerRect.left + 10) + 'px';
     inlineForm.style.top = (rect.top - containerRect.top + 10) + 'px';
     inlineForm.style.display = 'block';
     
     // Populate hidden fields
-    document.getElementById('form-week-start').value = cell.dataset.weekStart;
-    document.getElementById('form-day').value = cell.dataset.day;
-    document.getElementById('form-meal-type').value = cell.dataset.mealType;
+    document.getElementById('form-week-start').value = mealSlot.dataset.weekStart;
+    document.getElementById('form-day').value = mealSlot.dataset.day;
+    document.getElementById('form-meal-type').value = mealSlot.dataset.mealType;
+    
+    // Update form title
+    const mealTypeLabel = mealSlot.dataset.mealType.charAt(0).toUpperCase() + mealSlot.dataset.mealType.slice(1);
+    inlineForm.querySelector('h4').textContent = `Add ${mealTypeLabel} Meal`;
     
     // Focus recipe dropdown
     setTimeout(() => inlineForm.querySelector('select').focus(), 50);
@@ -313,7 +307,7 @@ function showInlineForm(cell) {
 
 document.getElementById('cancel-inline-form').addEventListener('click', () => {
     inlineForm.style.display = 'none';
-    currentTargetCell = null;
+    currentTargetSlot = null;
 });
 
 // Handle add meal form submit
@@ -329,7 +323,6 @@ addMealForm.addEventListener('submit', async (e) => {
         });
         
         if (response.ok) {
-            // Reload page to show new meal (simpler than DOM manipulation)
             window.location.reload();
         } else {
             alert('Failed to add meal');
@@ -348,10 +341,10 @@ document.querySelectorAll('.delete-btn').forEach(btn => {
         
         const mealId = btn.dataset.mealId;
         const card = btn.closest('.recipe-card');
-        const cell = card.closest('.meal-cell');
-        const weekStart = cell.dataset.weekStart;
-        const day = cell.dataset.day;
-        const mealType = cell.dataset.mealType;
+        const mealSlot = btn.closest('.meal-slot');
+        const weekStart = mealSlot.dataset.weekStart;
+        const day = mealSlot.dataset.day;
+        const mealType = mealSlot.dataset.mealType;
         
         try {
             const formData = new FormData();
@@ -378,9 +371,9 @@ document.querySelectorAll('.delete-btn').forEach(btn => {
 document.querySelectorAll('.serving-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        const card = btn.closest('.recipe-card');
-        const mealId = card.dataset.mealId;
+        const mealId = btn.dataset.mealId;
         const action = btn.dataset.action;
+        const card = btn.closest('.recipe-card');
         const servingsEl = card.querySelector('.servings-display');
         let servings = parseInt(servingsEl.textContent);
         
@@ -389,20 +382,25 @@ document.querySelectorAll('.serving-btn').forEach(btn => {
         else return;
         
         try {
-            // We need an API endpoint for this - for now just reload
-            // TODO: Add AJAX endpoint for updating servings
             const formData = new FormData();
+            formData.append('action', 'update_servings');
             formData.append('meal_id', mealId);
             formData.append('servings', servings);
-            formData.append('action', 'update_servings');
             
             const response = await fetch('{{ url_for("meal_plan") }}', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             
             if (response.ok) {
-                window.location.reload();
+                servingsEl.textContent = servings;
+                // Update cost display
+                const costEl = card.closest('.meal-slot').querySelector('.recipe-cost');
+                if (costEl) {
+                    // We'd need to recalculate - for now just reload
+                    window.location.reload();
+                }
             }
         } catch (err) {
             console.error(err);
@@ -412,9 +410,16 @@ document.querySelectorAll('.serving-btn').forEach(btn => {
 
 // Close inline form when clicking outside
 document.addEventListener('click', (e) => {
-    if (!inlineForm.contains(e.target) && !e.target.closest('.meal-cell.empty')) {
+    if (!inlineForm.contains(e.target) && !e.target.closest('.meal-slot') && !e.target.classList.contains('empty-slot')) {
         inlineForm.style.display = 'none';
     }
+});
+
+// Highlight today
+const todayStr = today.toISOString().split('T')[0];
+document.querySelectorAll('.day-cell .day-number').forEach(el => {
+    const dateStr = el.closest('.day-cell').querySelector('[data-week-start]')?.dataset.weekStart;
+    // This is approximate - would need better today detection
 });
 </script>
 {% endblock %}
