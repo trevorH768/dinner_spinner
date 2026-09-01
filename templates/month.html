@@ -51,7 +51,7 @@
                     style="width: 14.28%; min-height: 180px; padding: 8px; border-right: 1px solid #eee; border-bottom: 1px solid #eee; vertical-align: top; position: relative; {% if day_name in ['Saturday', 'Sunday'] %}background: #fafafa;{% endif %}">
                     
                     <!-- Day number -->
-                    <div class="day-number" style="font-weight: 600; font-size: 1.1rem; margin-bottom: 6px; color: #2c3e50; {% if day_date == today %}background: #3498db; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;{% endif %}">
+                    <div class="day-number" style="font-weight: 600; font-size: 1.1rem; margin-bottom: 6px; color: #3498db; {% if day_date == today %}background: #3498db; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;{% endif %}">
                         {{ day_date.day }}
                     </div>
                     
@@ -69,7 +69,7 @@
                             {% if week.schedule[day_name][meal_type] %}
                             <div class="recipe-card" data-meal-id="{{ week.schedule[day_name][meal_type].id }}" style="display: flex; flex-direction: column; gap: 4px;">
                                 <!-- Recipe name (truncated with tooltip) -->
-                                <span class="recipe-name" style="font-weight: 500; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #2c3e50;" title="{{ week.schedule[day_name][meal_type].recipe.name }}">{{ week.schedule[day_name][meal_type].recipe.name }}</span>
+                                <span class="recipe-name" style="font-weight: 500; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #3498db;" title="{{ week.schedule[day_name][meal_type].recipe.name }}">{{ week.schedule[day_name][meal_type].recipe.name }}</span>
                                 <!-- Controls row: meal type badge + servings + delete -->
                                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
                                     <span class="meal-badge" style="font-size: 0.55rem; font-weight: 600; padding: 1px 5px; border-radius: 3px; {% if meal_type == 'breakfast' %}background: #fff3cd; color: #856404;{% elif meal_type == 'lunch' %}background: #d4edda; color: #155724;{% else %}background: #cce5ff; color: #004085;{% endif %}">{{ meal_type[0].upper() }}</span>
