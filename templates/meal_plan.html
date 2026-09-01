@@ -8,15 +8,19 @@
 
     <form method="POST" style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
         <h3>Add/Edit Meal</h3>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Day</label>
-                <select name="day" required>
-                    {% for day in days %}
-                    <option value="{{ day }}">{{ day }}</option>
-                    {% endfor %}
-                </select>
+        
+        <div class="form-group">
+            <label>Days <small style="color: #666; font-weight: normal;">(select one or more)</small></label>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px;">
+                {% for day in days %}
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 8px 12px; background: white; border: 1px solid #ddd; border-radius: 4px; transition: all 0.2s;">
+                    <input type="checkbox" name="days" value="{{ day }}" style="width: auto; margin: 0;"> {{ day }}
+                </label>
+                {% endfor %}
             </div>
+        </div>
+
+        <div class="form-row">
             <div class="form-group">
                 <label>Meal</label>
                 <select name="meal_type" required>

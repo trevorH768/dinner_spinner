@@ -414,31 +414,39 @@ def meal_plan():
                     flash('Cannot copy to the same week.')
             return redirect(url_for('meal_plan', week=week_start.strftime('%Y-%m-%d')))
 
-        day = request.form['day']
+        # Handle multiple days from checkboxes
+        days_selected = request.form.getlist('days')
+        if not days_selected:
+            flash('Please select at least one day!')
+            return redirect(url_for('meal_plan', week=week_start.strftime('%Y-%m-%d')))
+
         meal_type = request.form['meal_type']
         recipe_id = int(request.form['recipe_id'])
         servings = int(request.form.get('servings', 1))
 
-        # Check if entry exists
-        existing = MealPlan.query.filter_by(
-            week_start=week_start, day=day, meal_type=meal_type
-        ).first()
+        count = 0
+        for day in days_selected:
+            # Check if entry exists
+            existing = MealPlan.query.filter_by(
+                week_start=week_start, day=day, meal_type=meal_type
+            ).first()
 
-        if existing:
-            existing.recipe_id = recipe_id
-            existing.servings = servings
-        else:
-            mp = MealPlan(
-                week_start=week_start,
-                day=day,
-                meal_type=meal_type,
-                recipe_id=recipe_id,
-                servings=servings
-            )
-            db.session.add(mp)
+            if existing:
+                existing.recipe_id = recipe_id
+                existing.servings = servings
+            else:
+                mp = MealPlan(
+                    week_start=week_start,
+                    day=day,
+                    meal_type=meal_type,
+                    recipe_id=recipe_id,
+                    servings=servings
+                )
+                db.session.add(mp)
+            count += 1
 
         db.session.commit()
-        flash('Meal plan updated!')
+        flash(f'Meal plan updated for {count} day(s)!')
         return redirect(url_for('meal_plan', week=week_start.strftime('%Y-%m-%d')))
 
     recipes = Recipe.query.all()
