@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff pytest
+
+      - name: Lint with Ruff
+        run: ruff check .
+
+      - name: Format check with Ruff
+        run: ruff format --check .
+
+      - name: Run tests
+        run: |
+          python -c "
+from app import app, db, Ingredient, Recipe, RecipeIngredient, MealPlan
+from datetime import date, timedelta, datetime
+
+with app.app_context():
+    db.create_all()
+    
+    # Test ingredient cost calculation
+    flour = Ingredient(name='Flour', category='Dry Goods', unit='g', package_price=5.99, package_quantity=2, package_unit='kg')
+    assert abs(flour.cost_per_base_unit() - 0.002995) < 0.00001
+    assert abs(flour.cost_per_recipe_unit('g') - 0.002995) < 0.00001
+    
+    # Test recipe cost
+    recipe = Recipe(name='Test', servings=4)
+    db.session.add(recipe)
+    db.session.flush()
+    ri = RecipeIngredient(recipe_id=recipe.id, ingredient_id=flour.id, quantity=300, unit='g')
+    db.session.add(ri)
+    db.session.commit()
+    assert abs(recipe.total_cost() - 0.8985) < 0.01
+    
+    print('All tests passed!')
+"
