@@ -45,12 +45,13 @@
             {% for week in weeks %}
             <tr>
                 {% for day_name in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
-                <td class="day-cell {% if day_name in ['Saturday', 'Sunday'] %}weekend{% endif %} {% if not week.is_current_month %}other-month{% endif %}" 
-                    style="width: 14.28%; min-height: 180px; padding: 8px; border-right: 1px solid #eee; border-bottom: 1px solid #eee; vertical-align: top; position: relative; {% if day_name in ['Saturday', 'Sunday'] %}background: #fafafa;{% endif %} {% if not week.is_current_month %}opacity: 0.6;{% endif %}">
+                {% set day_date = week.day_dates[loop.index0] %}
+                {% if day_date.month == current_month.month %}
+                <td class="day-cell {% if day_name in ['Saturday', 'Sunday'] %}weekend{% endif %}" 
+                    style="width: 14.28%; min-height: 180px; padding: 8px; border-right: 1px solid #eee; border-bottom: 1px solid #eee; vertical-align: top; position: relative; {% if day_name in ['Saturday', 'Sunday'] %}background: #fafafa;{% endif %}">
                     
                     <!-- Day number -->
-                    {% set day_date = week.day_dates[loop.index0] %}
-                    <div class="day-number" style="font-weight: 600; font-size: 1.1rem; margin-bottom: 6px; {% if day_date == today %}background: #3498db; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;{% endif %}">
+                    <div class="day-number" style="font-weight: 600; font-size: 1.1rem; margin-bottom: 6px; color: #2c3e50; {% if day_date == today %}background: #3498db; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;{% endif %}">
                         {{ day_date.day }}
                     </div>
                     
@@ -84,6 +85,26 @@
                         {% endfor %}
                     </div>
                 </td>
+                {% else %}
+                <td class="day-cell other-month {% if day_name in ['Saturday', 'Sunday'] %}weekend{% endif %}" 
+                    style="width: 14.28%; min-height: 180px; padding: 8px; border-right: 1px solid #eee; border-bottom: 1px solid #eee; vertical-align: top; position: relative; opacity: 0.3; {% if day_name in ['Saturday', 'Sunday'] %}background: #fafafa;{% endif %}">
+                    
+                    <!-- Day number (muted for other months) -->
+                    <div class="day-number" style="font-weight: 600; font-size: 1.1rem; margin-bottom: 6px; color: #ccc;">
+                        {{ day_date.day }}
+                    </div>
+                    
+                    <!-- Muted meal slots for other months -->
+                    <div class="meal-slots" style="display: flex; flex-direction: column; gap: 4px;">
+                        {% for meal_type in ['breakfast', 'lunch', 'dinner'] %}
+                        <div class="meal-slot" style="background: #f5f5f5; border: 1px solid #eee; border-radius: 4px; padding: 6px 8px; font-size: 0.75rem; min-height: 40px; color: #ccc;">
+                            <div class="meal-type-label" style="font-size: 0.65rem; font-weight: 600; text-transform: uppercase; margin-bottom: 2px;">{{ meal_type.capitalize() }}</div>
+                            <div style="color: #ccc;">—</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </td>
+                {% endif %}
                 {% endfor %}
             </tr>
             {% endfor %}
@@ -395,12 +416,7 @@ document.querySelectorAll('.serving-btn').forEach(btn => {
             
             if (response.ok) {
                 servingsEl.textContent = servings;
-                // Update cost display
-                const costEl = card.closest('.meal-slot').querySelector('.recipe-cost');
-                if (costEl) {
-                    // We'd need to recalculate - for now just reload
-                    window.location.reload();
-                }
+                window.location.reload();
             }
         } catch (err) {
             console.error(err);
@@ -413,13 +429,6 @@ document.addEventListener('click', (e) => {
     if (!inlineForm.contains(e.target) && !e.target.closest('.meal-slot') && !e.target.classList.contains('empty-slot')) {
         inlineForm.style.display = 'none';
     }
-});
-
-// Highlight today
-const todayStr = today.toISOString().split('T')[0];
-document.querySelectorAll('.day-cell .day-number').forEach(el => {
-    const dateStr = el.closest('.day-cell').querySelector('[data-week-start]')?.dataset.weekStart;
-    // This is approximate - would need better today detection
 });
 </script>
 {% endblock %}
