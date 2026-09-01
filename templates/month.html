@@ -1,0 +1,420 @@
+{% extends 'base.html' %}
+
+{% block title %}Month View - Meal Planner{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <h2>{{ current_month.strftime('%B %Y') }}</h2>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <a href="{{ url_for('month_view', month=prev_month.strftime('%Y-%m')) }}" class="btn btn-sm">← Prev Month</a>
+            
+            <form method="GET" action="{{ url_for('month_view') }}" style="display: flex; align-items: center; gap: 8px;">
+                <label for="month-select" style="margin: 0; font-weight: 500;">Jump to:</label>
+                <select id="month-select" name="month" onchange="this.form.submit()" style="width: auto; padding: 8px 12px;">
+                    {% for m in range(12, 0, -1) %}
+                    {% set d = current_month.replace(month=m) %}
+                    <option value="{{ d.strftime('%Y-%m') }}" {% if d.month == current_month.month and d.year == current_month.year %}selected{% endif %}>
+                        {{ d.strftime('%B %Y') }}
+                    </option>
+                    {% endfor %}
+                    {% for y in range(current_month.year - 2, current_month.year + 3) %}
+                    {% if y != current_month.year %}
+                    {% for m in range(1, 13) %}
+                    {% set d = current_month.replace(year=y, month=m, day=1) %}
+                    <option value="{{ d.strftime('%Y-%m') }}">{{ d.strftime('%B %Y') }}</option>
+                    {% endfor %}
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </form>
+            
+            <a href="{{ url_for('month_view', month=next_month.strftime('%Y-%m')) }}" class="btn btn-sm">Next Month →</a>
+            <a href="{{ url_for('month_view') }}" class="btn btn-sm btn-success">This Month</a>
+        </div>
+    </div>
+</div>
+
+<!-- Month Grid: 6 weeks x 7 days x 4 meal types -->
+<div class="card" style="padding: 0; overflow-x: auto;">
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; min-width: 1200px;">
+            <thead>
+                <tr style="background: #2c3e50; color: white;">
+                    <th style="width: 100px; position: sticky; left: 0; z-index: 10;">Meal / Week</th>
+                    {% for w in weeks %}
+                    <th colspan="7" style="text-align: center; padding: 12px; border-right: 1px solid rgba(255,255,255,0.2);">
+                        <div style="font-weight: 600;">{{ w.week_start.strftime('%b %d') }} - {{ w.week_end.strftime('%b %d, %Y') }}</div>
+                        <div style="font-size: 0.75rem; opacity: 0.8;">
+                            {% if w.is_current_week %}<span style="color: #27ae60;">● This week</span>{% endif %}
+                        </div>
+                    </th>
+                    {% endfor %}
+                </tr>
+                <tr style="background: #34495e; color: white;">
+                    <th style="width: 100px; position: sticky; left: 0; z-index: 10;"></th>
+                    {% for w in weeks %}
+                    {% for day in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+                    <th style="padding: 8px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); font-size: 0.75rem; {% if day in ['Sat', 'Sun'] %}background: rgba(255,255,255,0.05);{% endif %}">
+                        {{ day }}
+                    </th>
+                    {% endfor %}
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for meal_type in ['breakfast', 'lunch', 'dinner', 'snack'] %}
+                <tr class="meal-row" data-meal-type="{{ meal_type }}">
+                    <td class="meal-label" style="width: 100px; position: sticky; left: 0; background: #34495e; color: white; padding: 10px; font-weight: 600; z-index: 5;">{{ meal_type.capitalize() }}</td>
+                    {% for w in weeks %}
+                    {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                    <td class="meal-cell {% if day in ['Saturday', 'Sunday'] %}weekend{% endif %} {% if not w.schedule[day][meal_type] %}empty{% endif %}" 
+                        data-week-start="{{ w.week_start.strftime('%Y-%m-%d') }}"
+                        data-day="{{ day }}"
+                        data-meal-type="{{ meal_type }}"
+                        style="position: relative; min-height: 70px; padding: 4px; border-right: 1px solid #eee; border-bottom: 1px solid #eee; vertical-align: top; {% if day in ['Saturday', 'Sunday'] %}background: #fdfdfd;{% endif %} {% if not w.is_current_month %}opacity: 0.5;{% endif %}">
+                        
+                        {% if w.schedule[day][meal_type] %}
+                        <div class="recipe-card" data-meal-id="{{ w.schedule[day][meal_type].id }}" style="cursor: pointer;">
+                            <div class="recipe-name">{{ w.schedule[day][meal_type].recipe.name }}</div>
+                            <div class="recipe-servings">
+                                <span class="servings-display">{{ w.schedule[day][meal_type].servings }}</span>
+                                <button class="serving-btn" data-action="decrease" title="Decrease servings">−</button>
+                                <button class="serving-btn" data-action="increase" title="Increase servings">+</button>
+                            </div>
+                            <div class="recipe-cost">${{ "%.2f"|format(w.schedule[day][meal_type].recipe.cost_per_serving() * w.schedule[day][meal_type].servings) }}</div>
+                            <button class="delete-btn" data-meal-id="{{ w.schedule[day][meal_type].id }}" title="Delete meal">×</button>
+                        </div>
+                        {% else %}
+                        <div class="empty-cell-indicator" style="height: 100%; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 1.5rem;">+</div>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Inline Add Meal Form (hidden, shown on click) -->
+<div id="inline-form" class="inline-form" style="display: none; position: absolute; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; min-width: 280px;">
+    <h4 style="margin: 0 0 12px;">Add Meal</h4>
+    <form id="add-meal-form">
+        <input type="hidden" name="week_start" id="form-week-start">
+        <input type="hidden" name="day" id="form-day">
+        <input type="hidden" name="meal_type" id="form-meal-type">
+        <input type="hidden" name="action" value="add_meal">
+        
+        <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 4px; font-size: 0.875rem;">Recipe</label>
+            <select name="recipe_id" required style="width: 100%; padding: 8px;">
+                <option value="">Select recipe...</option>
+                {% for recipe in recipes %}
+                <option value="{{ recipe.id }}">{{ recipe.name }} (${{ "%.2f"|format(recipe.cost_per_serving()) }}/serving)</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <label style="display: block; margin-bottom: 4px; font-size: 0.875rem;">Servings</label>
+            <input type="number" name="servings" value="1" min="1" max="20" style="width: 100%; padding: 8px;">
+        </div>
+        
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-success" style="flex: 1;">Add</button>
+            <button type="button" id="cancel-inline-form" class="btn" style="flex: 1;">Cancel</button>
+        </div>
+    </form>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <h3>Month Summary</h3>
+    <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+        <div>
+            <strong>Total Meals:</strong> <span id="month-total-meals">{{ total_meals }}</span>
+        </div>
+        <div>
+            <strong>Estimated Cost:</strong> <span class="total-cost" id="month-total-cost">${{ "%.2f"|format(total_cost) }}</span>
+        </div>
+        <div>
+            <a href="{{ url_for('shopping_list') }}" class="btn btn-success">Generate Shopping List</a>
+        </div>
+    </div>
+</div>
+
+<style>
+.meal-cell {
+    transition: background 0.2s;
+}
+.meal-cell:hover {
+    background: #f0f7ff !important;
+}
+.meal-cell.weekend {
+    background: #fafafa;
+}
+.meal-cell.weekend:hover {
+    background: #f0f7ff !important;
+}
+.recipe-card {
+    background: #ecf0f1;
+    border-radius: 4px;
+    padding: 8px;
+    margin-bottom: 3px;
+    font-size: 0.8rem;
+    position: relative;
+    min-height: 55px;
+    border: 1px solid transparent;
+}
+.recipe-card:hover {
+    border-color: #3498db;
+}
+.recipe-name {
+    font-weight: 600;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.recipe-servings {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: #7f8c8d;
+}
+.servings-display {
+    background: white;
+    padding: 2px 8px;
+    border-radius: 3px;
+    min-width: 24px;
+    text-align: center;
+    border: 1px solid #ddd;
+}
+.serving-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+.serving-btn:hover {
+    background: #2980b9;
+}
+.serving-btn:active {
+    transform: scale(0.95);
+}
+.recipe-cost {
+    font-size: 0.7rem;
+    color: #27ae60;
+    font-weight: 600;
+    margin-top: 4px;
+}
+.delete-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.recipe-card:hover .delete-btn {
+    opacity: 1;
+}
+.empty-cell-indicator {
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.empty-cell-indicator:hover {
+    color: #3498db;
+}
+.meal-row {
+    /* Meal type row styling */
+}
+@media (max-width: 1200px) {
+    .recipe-card { font-size: 0.7rem; padding: 5px; }
+    .serving-btn { width: 18px; height: 18px; font-size: 11px; }
+}
+</style>
+
+<script>
+// Month totals (computed server-side would be better, but this works for now)
+let totalMeals = 0;
+let totalCost = 0.0;
+
+// Initialize totals from existing meals
+document.querySelectorAll('.recipe-card').forEach(card => {
+    totalMeals++;
+    const costText = card.querySelector('.recipe-cost');
+    if (costText) {
+        totalCost += parseFloat(costText.textContent.replace('$', ''));
+    }
+});
+document.getElementById('month-total-meals').textContent = totalMeals;
+document.getElementById('month-total-cost').textContent = '$' + totalCost.toFixed(2);
+
+// Inline form handling
+const inlineForm = document.getElementById('inline-form');
+const addMealForm = document.getElementById('add-meal-form');
+let currentTargetCell = null;
+
+// Click empty cell to add meal
+document.querySelectorAll('.meal-cell.empty .empty-cell-indicator').forEach(indicator => {
+    indicator.style.cursor = 'pointer';
+    indicator.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const cell = indicator.closest('.meal-cell');
+        showInlineForm(cell);
+    });
+});
+
+// Click on empty cell area
+document.querySelectorAll('.meal-cell.empty').forEach(cell => {
+    cell.addEventListener('click', (e) => {
+        if (e.target === cell || e.target.classList.contains('empty-cell-indicator')) {
+            showInlineForm(cell);
+        }
+    });
+});
+
+function showInlineForm(cell) {
+    currentTargetCell = cell;
+    const rect = cell.getBoundingClientRect();
+    const containerRect = document.querySelector('.card').getBoundingClientRect();
+    
+    // Position form near the cell
+    inlineForm.style.left = (rect.left - containerRect.left + 10) + 'px';
+    inlineForm.style.top = (rect.top - containerRect.top + 10) + 'px';
+    inlineForm.style.display = 'block';
+    
+    // Populate hidden fields
+    document.getElementById('form-week-start').value = cell.dataset.weekStart;
+    document.getElementById('form-day').value = cell.dataset.day;
+    document.getElementById('form-meal-type').value = cell.dataset.mealType;
+    
+    // Focus recipe dropdown
+    setTimeout(() => inlineForm.querySelector('select').focus(), 50);
+}
+
+document.getElementById('cancel-inline-form').addEventListener('click', () => {
+    inlineForm.style.display = 'none';
+    currentTargetCell = null;
+});
+
+// Handle add meal form submit
+addMealForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(addMealForm);
+    
+    try {
+        const response = await fetch('{{ url_for("meal_plan") }}', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        
+        if (response.ok) {
+            // Reload page to show new meal (simpler than DOM manipulation)
+            window.location.reload();
+        } else {
+            alert('Failed to add meal');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error adding meal');
+    }
+});
+
+// Delete meal
+document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm('Remove this meal?')) return;
+        
+        const mealId = btn.dataset.mealId;
+        const card = btn.closest('.recipe-card');
+        const cell = card.closest('.meal-cell');
+        const weekStart = cell.dataset.weekStart;
+        const day = cell.dataset.day;
+        const mealType = cell.dataset.mealType;
+        
+        try {
+            const formData = new FormData();
+            formData.append('action', 'delete_meal');
+            formData.append('week_start', weekStart);
+            formData.append('day', day);
+            formData.append('meal_type', mealType);
+            
+            const response = await fetch('{{ url_for("meal_plan") }}', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                window.location.reload();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    });
+});
+
+// Inline servings +/- buttons
+document.querySelectorAll('.serving-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.recipe-card');
+        const mealId = card.dataset.mealId;
+        const action = btn.dataset.action;
+        const servingsEl = card.querySelector('.servings-display');
+        let servings = parseInt(servingsEl.textContent);
+        
+        if (action === 'increase') servings++;
+        else if (action === 'decrease' && servings > 1) servings--;
+        else return;
+        
+        try {
+            // We need an API endpoint for this - for now just reload
+            // TODO: Add AJAX endpoint for updating servings
+            const formData = new FormData();
+            formData.append('meal_id', mealId);
+            formData.append('servings', servings);
+            formData.append('action', 'update_servings');
+            
+            const response = await fetch('{{ url_for("meal_plan") }}', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                window.location.reload();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    });
+});
+
+// Close inline form when clicking outside
+document.addEventListener('click', (e) => {
+    if (!inlineForm.contains(e.target) && !e.target.closest('.meal-cell.empty')) {
+        inlineForm.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

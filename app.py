@@ -220,6 +220,79 @@ def index():
                            is_current_week=is_current_week)
 
 
+@app.route('/month')
+def month_view():
+    """Month view showing 6 weeks (fixed grid)"""
+    from datetime import date
+    import calendar
+    
+    # Parse month from query params (YYYY-MM)
+    month_str = request.args.get('month')
+    if month_str:
+        try:
+            year, month = map(int, month_str.split('-'))
+            first_day = date(year, month, 1)
+        except (ValueError, TypeError):
+            first_day = date.today().replace(day=1)
+    else:
+        first_day = date.today().replace(day=1)
+    
+    # Get the Monday of the week containing the 1st of the month
+    month_start = first_day - timedelta(days=first_day.weekday())
+    
+    # Generate 6 weeks (42 days) of data
+    weeks = []
+    current_week_start = month_start
+    for _ in range(6):
+        week_end = current_week_start + timedelta(days=6)
+        meal_plans = MealPlan.query.filter_by(week_start=current_week_start).all()
+        
+        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        meal_types = ['breakfast', 'lunch', 'dinner', 'snack']
+        schedule = {day: {mt: None for mt in meal_types} for day in days}
+        
+        for mp in meal_plans:
+            schedule[mp.day][mp.meal_type] = mp
+        
+        weeks.append({
+            'week_start': current_week_start,
+            'week_end': week_end,
+            'schedule': schedule,
+            'is_current_month': current_week_start.month == first_day.month,
+            'is_current_week': current_week_start == get_week_start(),
+        })
+        
+        current_week_start += timedelta(days=7)
+    
+    # Calculate month totals
+    total_meals = 0
+    total_cost = 0.0
+    for w in weeks:
+        for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']:
+            for meal_type in ['breakfast', 'lunch', 'dinner', 'snack']:
+                mp = w['schedule'][day][meal_type]
+                if mp:
+                    total_meals += 1
+                    if mp.recipe:
+                        total_cost += mp.recipe.cost_per_serving() * mp.servings
+    
+    # Prev/next month
+    if first_day.month == 1:
+        prev_month = first_day.replace(year=first_day.year - 1, month=12)
+        next_month = first_day.replace(month=2)
+    elif first_day.month == 12:
+        prev_month = first_day.replace(month=11)
+        next_month = first_day.replace(year=first_day.year + 1, month=1)
+    else:
+        prev_month = first_day.replace(month=first_day.month - 1)
+        next_month = first_day.replace(month=first_day.month + 1)
+    
+    recipes = Recipe.query.all()
+    return render_template('month.html', weeks=weeks, 
+                           current_month=first_day, prev_month=prev_month, next_month=next_month,
+                           recipes=recipes, total_meals=total_meals, total_cost=total_cost)
+
+
 @app.route('/recipes')
 def recipes():
     recipes = Recipe.query.all()
@@ -382,10 +455,16 @@ def delete_ingredient(id):
 
 @app.route('/meal-plan', methods=['GET', 'POST'])
 def meal_plan():
-    week_str = request.args.get('week')
+    # For month view, week_start comes from form data; for week view, from query param
+    if request.method == 'POST':
+        week_str = request.form.get('week_start') or request.args.get('week')
+    else:
+        week_str = request.args.get('week')
     week_start = parse_week_start(week_str)
 
     if request.method == 'POST':
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
         # Handle delete meal action
         if request.form.get('action') == 'delete_meal':
             day = request.form['day']
@@ -396,7 +475,58 @@ def meal_plan():
             if mp:
                 db.session.delete(mp)
                 db.session.commit()
+                if is_ajax:
+                    return jsonify({'success': True})
                 flash('Meal removed!')
+            return redirect(url_for('meal_plan', week=week_start.strftime('%Y-%m-%d')))
+
+        # Handle update servings action
+        if request.form.get('action') == 'update_servings':
+            meal_id = request.form.get('meal_id')
+            servings = int(request.form.get('servings', 1))
+            mp = MealPlan.query.get(meal_id)
+            if mp:
+                mp.servings = servings
+                db.session.commit()
+                if is_ajax:
+                    return jsonify({'success': True, 'servings': servings})
+                flash('Servings updated!')
+            return redirect(url_for('meal_plan', week=week_start.strftime('%Y-%m-%d')))
+
+        # Handle add meal action (from month view inline form)
+        if request.form.get('action') == 'add_meal':
+            days_selected = request.form.getlist('days')
+            if not days_selected:
+                # Single day from form
+                days_selected = [request.form['day']]
+            
+            meal_type = request.form['meal_type']
+            recipe_id = int(request.form['recipe_id'])
+            servings = int(request.form.get('servings', 1))
+            
+            count = 0
+            for day in days_selected:
+                existing = MealPlan.query.filter_by(
+                    week_start=week_start, day=day, meal_type=meal_type
+                ).first()
+                if existing:
+                    existing.recipe_id = recipe_id
+                    existing.servings = servings
+                else:
+                    mp = MealPlan(
+                        week_start=week_start,
+                        day=day,
+                        meal_type=meal_type,
+                        recipe_id=recipe_id,
+                        servings=servings
+                    )
+                    db.session.add(mp)
+                count += 1
+            
+            db.session.commit()
+            if is_ajax:
+                return jsonify({'success': True, 'count': count})
+            flash(f'Meal plan updated for {count} day(s)!')
             return redirect(url_for('meal_plan', week=week_start.strftime('%Y-%m-%d')))
 
         # Handle copy week action
