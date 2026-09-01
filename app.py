@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
@@ -8,7 +9,18 @@ app.config['SECRET_KEY'] = 'dev-secret-key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///meal_planner.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Food Data Provider Configuration
+app.config['USDA_FDC_API_KEY'] = os.environ.get('USDA_FDC_API_KEY', '')
+app.config['OFF_USER_AGENT'] = os.environ.get('OFF_USER_AGENT', 'DinnerSpinner/1.0')
+app.config['CNF_CSV_PATH'] = os.environ.get('CNF_CSV_PATH', '')
+
 db = SQLAlchemy(app)
+
+# Import food data CLI commands
+from food_data.cli import register_food_commands
+
+# Register CLI commands
+register_food_commands(app)
 
 
 class Ingredient(db.Model):
@@ -24,9 +36,27 @@ class Ingredient(db.Model):
     
     quantity_on_hand = db.Column(db.Float, default=0.0)  # inventory tracking (in recipe unit)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Nutrition link
+    food_link = db.relationship('IngredientFoodLink', backref='ingredient', uselist=False, lazy='joined')
 
     def __repr__(self):
         return f'<Ingredient {self.name}>'
+    
+    @property
+    def linked_food(self):
+        """Get the linked canonical Food for nutrition data."""
+        if self.food_link:
+            return self.food_link.food
+        return None
+    
+    def get_nutrition(self, serving_weight_g: float = None):
+        """Get nutrition info for this ingredient."""
+        if not self.food_link:
+            return None
+        from meal_planner.food_data.service import FoodService
+        service = FoodService()
+        return service.get_ingredient_nutrition(self.id)
 
     def cost_per_base_unit(self):
         """Return cost per gram (for weight) or per ml (for volume) or per piece"""
@@ -702,4 +732,11 @@ def api_ingredients():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        # Initialize food data providers after tables are created
+        from food_data import init_providers
+        init_providers(
+            usda_api_key=app.config.get('USDA_FDC_API_KEY'),
+            off_user_agent=app.config.get('OFF_USER_AGENT'),
+            cnf_csv_path=app.config.get('CNF_CSV_PATH'),
+        )
     app.run(debug=True)
