@@ -153,9 +153,17 @@ class ProviderRegistry:
 provider_registry = ProviderRegistry()
 
 
+# Global registry instance
+provider_registry = ProviderRegistry()
+
+# Track if providers have been initialized
+_providers_initialized = False
+
+
 def init_providers(usda_api_key: str = None, off_user_agent: str = None, 
                    cnf_csv_path: str = None, db_instance=None):
     """Initialize all providers with configuration."""
+    global _providers_initialized
     
     # USDA FoodData Central
     if usda_api_key:
@@ -171,6 +179,25 @@ def init_providers(usda_api_key: str = None, off_user_agent: str = None,
         from .cnf_provider import HealthCanadaCNFProvider
         provider_registry.register_class(HealthCanadaCNFProvider, cnf_csv_path)
     
+    _providers_initialized = True
+    
     # Note: Database sync is now manual - call provider_registry.sync_providers(db) after db.create_all()
     
     return provider_registry
+
+
+def ensure_providers_initialized(app_config=None):
+    """Ensure providers are initialized from app config. Call from CLI commands or before first use."""
+    global _providers_initialized
+    if _providers_initialized:
+        return provider_registry
+    
+    if app_config is None:
+        from flask import current_app
+        app_config = current_app.config
+    
+    return init_providers(
+        usda_api_key=app_config.get('USDA_FDC_API_KEY'),
+        off_user_agent=app_config.get('OFF_USER_AGENT', 'DinnerSpinner/1.0'),
+        cnf_csv_path=app_config.get('CNF_CSV_PATH'),
+    )

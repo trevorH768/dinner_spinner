@@ -14,6 +14,9 @@ def register_food_commands(app):
     @app.cli.group()
     def food():
         """Food data management commands."""
+        # Ensure providers are initialized
+        from food_data.registry import ensure_providers_initialized
+        ensure_providers_initialized(app.config)
         pass
     
     @food.command()

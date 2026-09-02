@@ -38,7 +38,7 @@ class Ingredient(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Nutrition link
-    food_link = db.relationship('IngredientFoodLink', backref='ingredient', uselist=False, lazy='joined')
+    food_link = db.relationship('food_data.models.IngredientFoodLink', backref='ingredient', uselist=False, lazy='joined')
 
     def __repr__(self):
         return f'<Ingredient {self.name}>'

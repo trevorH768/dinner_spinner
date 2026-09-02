@@ -249,7 +249,7 @@ class FoodService:
     
     def calculate_recipe_nutrition(self, recipe_id: int) -> Optional[Dict]:
         """Calculate full nutrition for a recipe."""
-        from meal_planner.app import Recipe, RecipeIngredient
+        from app import Recipe, RecipeIngredient
         
         recipe = Recipe.query.get(recipe_id)
         if not recipe:
@@ -374,7 +374,8 @@ class FoodService:
         
         created = 0
         for nut_id, name, unit, is_macro in core_nutrients:
-            existing = Nutrient.query.get(nut_id)
+            # Check by name since unique constraint is on name
+            existing = Nutrient.query.filter_by(name=name).first()
             if not existing:
                 nut = Nutrient(
                     id=nut_id,
@@ -385,6 +386,9 @@ class FoodService:
                 )
                 db.session.add(nut)
                 created += 1
+            elif existing.id != nut_id:
+                # Nutrient with same name exists but different ID - skip
+                pass
         
         db.session.commit()
         return created
