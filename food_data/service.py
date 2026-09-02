@@ -14,6 +14,10 @@ from .models import (
     FoodAlias, FoodCategory, IngredientFoodLink
 )
 from .registry import provider_registry
+from units import (
+    convert, to_base, to_grams, to_ml, is_compatible,
+    UnitConversionError, MissingDensityError, MissingItemWeightError
+)
 
 
 class FoodService:
@@ -143,7 +147,7 @@ class FoodService:
     def link_ingredient_to_food(self, ingredient_id: int, food_id: int,
                                  match_type: str = 'manual', 
                                  confidence: float = 1.0,
-                                 user_id: int = None) -> IngredientFoodLink:
+                                 user_id: int = None):
         """
         Link an Ingredient to a canonical Food for nutrition data.
         
@@ -151,7 +155,7 @@ class FoodService:
         Ingredient model (pricing, packaging, inventory) and
         the canonical Food model (nutrition).
         """
-        from app import Ingredient
+        from app import Ingredient, IngredientFoodLink
         ingredient = Ingredient.query.get_or_404(ingredient_id)
         food = Food.query.get_or_404(food_id)
         
@@ -234,16 +238,11 @@ class FoodService:
         }
     
     def _unit_to_ml(self, unit: str) -> Optional[float]:
-        """Convert volume unit to ml."""
-        unit = unit.lower()
-        conversions = {
-            'ml': 1.0, 'milliliter': 1.0, 'milliliters': 1.0,
-            'l': 1000.0, 'liter': 1000.0, 'liters': 1000.0,
-            'cup': 236.588, 'cups': 236.588, 'c': 236.588,
-            'tbsp': 14.787, 'tablespoon': 14.787, 'tablespoons': 14.787,
-            'tsp': 4.929, 'teaspoon': 4.929, 'teaspoons': 4.929,
-        }
-        return conversions.get(unit)
+        """Convert volume unit to ml using centralized conversion."""
+        try:
+            return to_ml(1.0, unit)
+        except UnitConversionError:
+            return None
     
     # ==================== RECIPE/MEAL NUTRITION ====================
     
@@ -399,7 +398,7 @@ class FoodService:
         """
         Attempt to auto-link unlinked ingredients to foods by name matching.
         """
-        from app import Ingredient
+        from app import Ingredient, IngredientFoodLink
         unlinked = Ingredient.query.filter(
             ~Ingredient.id.in_(
                 db.session.query(IngredientFoodLink.ingredient_id)

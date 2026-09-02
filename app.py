@@ -16,7 +16,17 @@ app.config['CNF_CSV_PATH'] = os.environ.get('CNF_CSV_PATH', '')
 
 db = SQLAlchemy(app)
 
-# Import food data CLI commands
+# Import canonical unit conversion
+from units import (
+    convert, to_base, to_grams, to_ml, is_compatible, parse_unit,
+    UnitConversionError, MissingDensityError, MissingItemWeightError
+)
+
+# Import food_data models to register IngredientFoodLink with SQLAlchemy
+# Must be done before defining Ingredient class which references it
+import food_data.models
+
+# Import food_data CLI commands
 from food_data.cli import register_food_commands
 
 # Register CLI commands
@@ -38,7 +48,7 @@ class Ingredient(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Nutrition link
-    food_link = db.relationship('food_data.models.IngredientFoodLink', backref='ingredient', uselist=False, lazy='joined')
+    food_link = db.relationship('IngredientFoodLink', backref='ingredient', uselist=False, lazy='joined')
 
     def __repr__(self):
         return f'<Ingredient {self.name}>'
@@ -60,79 +70,50 @@ class Ingredient(db.Model):
 
     def cost_per_base_unit(self):
         """Return cost per gram (for weight) or per ml (for volume) or per piece"""
-        pu = self.package_unit.lower()
-        
-        # Convert package quantity to base units
-        if pu in ('g', 'gram', 'grams'):
-            base_qty = self.package_quantity
-        elif pu in ('kg', 'kilogram', 'kilograms'):
-            base_qty = self.package_quantity * 1000
-        elif pu in ('lb', 'lbs', 'pound', 'pounds'):
-            base_qty = self.package_quantity * 453.592
-        elif pu in ('oz', 'ounce', 'ounces'):
-            base_qty = self.package_quantity * 28.3495
-        elif pu in ('ml', 'milliliter', 'milliliters'):
-            base_qty = self.package_quantity
-        elif pu in ('l', 'liter', 'liters'):
-            base_qty = self.package_quantity * 1000
-        elif pu in ('cup', 'cups', 'c'):
-            base_qty = self.package_quantity * 236.588  # US cup to ml
-        elif pu in ('tbsp', 'tablespoon', 'tablespoons'):
-            base_qty = self.package_quantity * 14.787
-        elif pu in ('tsp', 'teaspoon', 'teaspoons'):
-            base_qty = self.package_quantity * 4.929
-        elif pu in ('each', 'piece', 'pieces', 'count'):
-            return self.package_price / self.package_quantity  # cost per piece
-        else:
-            base_qty = self.package_quantity
+        try:
+            base_qty = to_base(self.package_quantity, self.package_unit)
+        except UnitConversionError:
+            # Fallback for unrecognized units
+            return 0
         
         if base_qty <= 0:
             return 0
         return self.package_price / base_qty
-
-    def cost_per_recipe_unit(self, recipe_unit=None):
-        """Cost per recipe unit (g, ml, piece, cup, etc.)"""
+    
+    def cost_per_recipe_unit(self, recipe_unit=None, density=None):
+        """Cost per recipe unit (g, ml, piece, cup, etc.)
+        
+        Args:
+            recipe_unit: The unit used in the recipe (defaults to self.unit)
+            density: Optional density in g/ml for volume↔mass conversion
+        """
         if recipe_unit is None:
             recipe_unit = self.unit
         
-        ru = recipe_unit.lower()
         base_cost = self.cost_per_base_unit()
         
-        # If ingredient is sold by count (each), recipe unit should be piece/each
-        if self.package_unit.lower() in ('each', 'piece', 'pieces', 'count'):
-            if ru in ('each', 'piece', 'pieces', 'count'):
-                return base_cost
-            # Can't convert count to weight/volume without density
+        try:
+            # Get cost per recipe unit by converting base cost to recipe unit
+            # cost_per_base_unit is $/g or $/ml
+            # We need $/recipe_unit
+            if is_compatible(self.package_unit, recipe_unit):
+                # Same type conversion - direct
+                base_qty = to_base(self.package_quantity, self.package_unit)
+                recipe_qty = to_base(1.0, recipe_unit)
+                return self.package_price / (base_qty / recipe_qty)
+            else:
+                # Cross-type conversion needs density
+                if density is not None:
+                    # Convert 1 recipe_unit to base mass (g), then to base cost
+                    mass_g = to_grams(1.0, recipe_unit, density=density)
+                    return base_cost * mass_g
+                else:
+                    # No density available - cannot convert across types
+                    # Return base cost as fallback with warning
+                    return base_cost
+        except UnitConversionError:
+            # Unrecognized unit - return base cost
             return base_cost
-        
-        # Weight conversions
-        if ru in ('g', 'gram', 'grams'):
-            return base_cost
-        if ru in ('kg', 'kilogram', 'kilograms'):
-            return base_cost * 1000
-        if ru in ('lb', 'lbs', 'pound', 'pounds'):
-            return base_cost * 453.592
-        if ru in ('oz', 'ounce', 'ounces'):
-            return base_cost * 28.3495
-        
-        # Volume conversions
-        if ru in ('ml', 'milliliter', 'milliliters'):
-            return base_cost
-        if ru in ('l', 'liter', 'liters'):
-            return base_cost * 1000
-        if ru in ('cup', 'cups', 'c'):
-            return base_cost * 236.588
-        if ru in ('tbsp', 'tablespoon', 'tablespoons'):
-            return base_cost * 14.787
-        if ru in ('tsp', 'teaspoon', 'teaspoons'):
-            return base_cost * 4.929
-        
-        # Piece/count
-        if ru in ('each', 'piece', 'pieces', 'count'):
-            # Can't convert weight/volume to count without density
-            return base_cost
-        
-        return base_cost
 
 
 class Recipe(db.Model):

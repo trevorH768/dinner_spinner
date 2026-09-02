@@ -18,6 +18,7 @@ from .models import (
     FoodProvider,
     FoodProvenance,
     FoodAlias,
+    IngredientFoodLink,
 )
 from .providers import (
     FoodProviderBase,
